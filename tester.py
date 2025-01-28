@@ -47,15 +47,15 @@ where
         
         for i, test_case in enumerate(problem['tests']):
             # Split the test case into inputs and expected output
-            parts = test_case.split()
-            if len(parts) < 2:  # Need at least one input and one output
-                raise ValueError(f"Invalid test case format: {test_case}")
+            #parts = test_case.split()
+            #if len(parts) < 2:  # Need at least one input and one output
+            #    raise ValueError(f"Invalid test case format: {test_case}")
             
-            inputs = parts[:-1]  # All but the last part are inputs
-            expected = parts[-1]  # Last part is the expected output
+            inputs = test_case['input']  # All but the last part are inputs
+            expected = test_case['output']  # Last part is the expected output
             
             # Create the function call
-            fn_call = f"{fn_name} {' '.join(inputs)}"
+            fn_call = f"{fn_name} {inputs}"
             test_assertions.append(f"""
   if ← checkEqual ({fn_call}) ({expected}) then
     passed := passed + 1""")
@@ -83,7 +83,8 @@ where
             # Print file content for debugging
             with open(file_path, 'r') as f:
                 print("File content:")
-                print(f.read())
+                code=f.read()
+                print(code)
                 print("\n---\n")
 
             # First check compilation
@@ -94,7 +95,7 @@ where
             )
             
             if compile_result.returncode != 0:
-                return False, f"Compilation error:\n{compile_result.stderr}\n\nStdout:\n{compile_result.stdout}", {"passed": 0, "total": 0}
+                return False, f"Compilation error:\n{compile_result.stderr}\n\nStdout:\n{compile_result.stdout}\nCode:\n{code}", {"passed": 0, "total": 0}
 
             # Run the program using lake env lean --run
             run_result = subprocess.run(

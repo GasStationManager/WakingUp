@@ -45,9 +45,9 @@ You are encouraged to think step by step. You may use the provided tool to furth
 """
 
 
-async def solve_recog (problem: Dict[str, Any], model='sonnet'):
+async def solve_recog (problem: Dict[str, Any], model='sonnet', max_attempts=20):
     prompt = generate_recog_prompt(problem)
-    res=await interactive_lean_check(prompt, model=models[model])
+    res=await interactive_lean_check(prompt, model=models[model], max_attempts=max_attempts)
 
     print (res)
     out=''
@@ -80,6 +80,7 @@ async def main():
           model=sys.argv[3]
         else:
           model='sonnet'
+        print ('using model', model)
         inp_jo=copy.deepcopy(jo)
         if 'statement' in jo:
           inp_jo['description']=jo['statement']

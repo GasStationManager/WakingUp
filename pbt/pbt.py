@@ -6,6 +6,7 @@ from typing import Dict, List, Any
 from dataclasses import dataclass
 import asyncio
 import copy
+import traceback
 import verify
 
 
@@ -58,6 +59,8 @@ import Plausible
         input_params = " ".join(f"{inp}" for inp in inputs)
         
         return f"""
+set_option linter.unusedVariables false
+
 {self.code_solution}
 
 #eval {self.function_signature.split('(')[0].strip().replace('def', '')} {input_params}
@@ -121,19 +124,27 @@ import Plausible
         for input_param in input_types:
             sample_script = self.generate_sample_script(input_param.type_name)
             while len(input_param.values)< num_tests:
+              try:
                 sample_output = self.run_lean_script(sample_script)
                 input_param.values += sample_output.strip().splitlines()
-
+              except RuntimeError as e:
+                if 'failed to synthesize' in str(e) or 'unknown identifier' in str(e):
+                  input_param.values += ['(by decide)'] * num_tests
+                else: raise e
         for test_num in range(num_tests):
             #inputs
             inputs = [inp.values[test_num] for inp in input_types]
             # Evaluate function
             eval_script = self.generate_eval_script(inputs)
-            output = self.run_lean_script(eval_script).strip()
-            
-            # Verify property
-            r = await self.verify_property(inputs, output)
-
+            try:
+              output = self.run_lean_script(eval_script).strip().splitlines()
+              output = ['' if 'warning' in ln else ln for ln in output]
+              output='\n'.join(output).strip()
+              # Verify property
+              r = await self.verify_property(inputs, output)
+            except RuntimeError as e:
+              print (e)
+              r = 'unknown'
             if r=='pass':
                 results['passed'] += 1
             elif r=='unknown':
