@@ -10,7 +10,7 @@ from LeanTool.leantool import interactive_lean_check, models
 import tester
 
 
-
+TEMP=0.7
 
 def generate_recog_prompt(problem: Dict[str,Any]) -> str:
         return f"""You are given a coding problem description, and a formal specification of the requirements in Lean 4.
@@ -50,9 +50,9 @@ You may further test your code on other inputs as well.
 """
 
 
-async def solve_recog (problem: Dict[str, Any], model='sonnet', max_attempts=20):
+async def solve_recog (problem: Dict[str, Any], model='sonnet', max_attempts=10):
     prompt = generate_recog_prompt(problem)
-    res=await interactive_lean_check(prompt, model=models[model], max_attempts=max_attempts)
+    res=await interactive_lean_check(prompt, model=models[model], max_attempts=max_attempts,temperature=TEMP)
 
     print (res)
     out=''
@@ -86,6 +86,10 @@ async def main():
         else:
           model='sonnet'
         print ('using model', model)
+        if len(sys.argv)>4:
+          max_att=sys.argv[4]
+        else:
+          max_att=3
         inp_jo=copy.deepcopy(jo)
         if 'statement' in jo:
           inp_jo['description']=jo['statement']
@@ -93,7 +97,10 @@ async def main():
           inp_jo['description']=jo['description']
         #print (json.dumps(inp_jo,indent=4))
         try:
-          solution=await solve_recog(inp_jo, model=model)
+          for attempts in range(max_att):
+            solution=await solve_recog(inp_jo, model=model)
+            if solution.get('tests_total',0)>0 and solution['tests_passed']==solution['tests_total']:
+              break
           out_jo=copy.deepcopy(inp_jo)
           out_jo['recog_solution']=solution
         except Exception as e:

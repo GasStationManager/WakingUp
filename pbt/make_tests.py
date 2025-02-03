@@ -7,7 +7,6 @@ from dataclasses import dataclass
 import asyncio
 import copy
 import traceback
-import verify
 
 
 @dataclass
@@ -16,16 +15,26 @@ class TestInput:
     type_name: str
     values: List[str]
 
-class PropertyBasedTester:
-    def __init__(self, spec: Dict[str, str]):
+
+def extract_imports(code: str):
+    lines=code.splitlines(keepends=True)
+    imports=''
+    rest=''
+    for ln in lines:
+        if ln.startswith('import'):
+            imports+=ln
+        else:
+            rest+=ln
+    return imports, rest
+
+
+class MakeTester:
+    def __init__(self, spec: Dict[str, str], sol_fname: str):
         self.description = spec['description']
         self.function_signature = spec['function_signature']
-        self.property_name = spec.get('property_name')
-        self.property_def = spec.get('property_def')
-        self.code_solution = spec['code_solution']
-        self.theorem_signature=spec.get('theorem_signature')
-        self.theorem2_signature=spec.get('theorem2_signature', '')
-        
+        with open(sol_fname) as f:
+          self.code_solution = f.read()
+
     def extract_input_types(self) -> List[TestInput]:
         """Extract input parameter types from function signature."""
         # First split the signature into parameter groups
@@ -59,11 +68,12 @@ import Plausible
     def generate_eval_script(self, inputs: List[str]) -> str:
         """Generate Lean script to evaluate function with given inputs."""
         input_params = " ".join(f"{inp}" for inp in inputs)
-        
+        imports,rest=extract_imports(self.code_solution)
         return f"""
+{imports}
 set_option linter.unusedVariables false
 
-{self.code_solution}
+{rest}
 
 #eval {self.function_signature.split('(')[0].strip().replace('def', '')} {input_params}
         """
@@ -85,7 +95,7 @@ set_option linter.unusedVariables false
                                   text=True)
             
             if result.returncode != 0:
-                raise RuntimeError(f"Lean script failed: {result.stdout}\n{result.stderr}\nscript:\n{script}")
+                raise RuntimeError(f"Lean script failed:\nscript:\n{script}\n{result.stdout}\n{result.stderr}\n")
                 
             return result.stdout
             
@@ -96,72 +106,10 @@ set_option linter.unusedVariables false
             except OSError:
                 pass  # Handle cleanup errors silently
 
-    async def verify_property(self, inputs: List[str], output: str) -> str:
-        """Call external verifier to check if property holds."""
-        # Create verification context
-        context = {
-            'prop_def': self.property_def,
-            'prop_name': self.property_name,
-            'test_case': ' '.join([inp for inp in inputs]) + ' ' + output
-        }
-        
-        # Call external verifier (placeholder)
-        result = await verify.verify(**context)
-        print(result)
-        return result['status']
 
-
-
-    def gen_plausible_script(self, theorem_sig:str):
-        code=self.code_solution.replace('def', '@[simp] def')
-        script=f"""
-import Plausible
-
-{code}
-
-{theorem_sig} := by
-  simp
-  plausible
-"""
-        return script
-    def run_plausible_script(self, theorem_sig:str):
-        success=True
-        try:
-            r=self.run_lean_script(self.gen_plausible_script(theorem_sig))
-        except RuntimeError as e:
-            r=str(e)
-            if 'error: Failed to create' in r:
-                success=False
-        return success,r
-
-    def try_plausible(self):
-        output=''
-        success,r=self.run_plausible_script(self.theorem_signature)
-        if success:
-            output+=f"Result of running plausible on the theorem statement {self.theorem_signature}:\n"
-            output+=r
-        else:
-            print (f'Plausible failed for {self.theorem_signature}:', r)
-        if len(self.theorem2_signature.strip())>0:
-            success,r=self.run_plausible_script(self.theorem2_signature)
-            if success:
-                output+=f"\nResult of running plausible on the theorem statement {self.theorem2_signature}:\n"
-                output+=r
-            else:
-                print(f'Plausible failed for {self.theorem2_signature}:',r)
-        return output
-
-    async def run_tests(self, num_tests: int = 100) -> Dict[str, Any]:
+    async def run_tests(self, num_tests: int = 20) -> Dict[str, Any]:
         """Run property-based tests."""
-        if self.property_def is None:
-            return {'output': self.try_plausible()} 
-        results = {
-            'total_tests': num_tests,
-            'passed': 0,
-            'unknown': 0,
-            'failed': 0,
-            'failures': []
-        }
+        results = []
 
         input_types = self.extract_input_types()
 
@@ -176,50 +124,53 @@ import Plausible
                 if 'failed to synthesize' in str(e) or 'unknown identifier' in str(e):
                   input_param.values += ['(by decide)'] * num_tests
                 else: raise e
+        inputs_set=set()
         for test_num in range(num_tests):
             #inputs
             inputs = [inp.values[test_num] for inp in input_types]
+            inpstr=' '.join(inputs)
+            if inpstr in inputs_set:
+              print(inpstr, 'already added')
+              continue
+            else:
+              inputs_set.add(inpstr)
             # Evaluate function
             eval_script = self.generate_eval_script(inputs)
             try:
               output = self.run_lean_script(eval_script).strip().splitlines()
               output = ['' if 'warning' in ln else ln for ln in output]
               output='\n'.join(output).strip()
-              # Verify property
-              r = await self.verify_property(inputs, output)
+              print('input', inputs, 'output', output)
+              results.append({
+                'input': ' '.join(inputs),
+                'output': output
+              })
             except RuntimeError as e:
               print (e)
-              r = 'unknown'
-            if r=='pass':
-                results['passed'] += 1
-            elif r=='unknown':
-                results['unknown'] += 1
-            else:
-                results['failed'] += 1
-                results['failures'].append({
-                    'inputs': {inp.name: inp.values[test_num] for inp in input_types},
-                    'output': output
-                })
-                
+        print('number of tests generated: ', len(results))
         return results
 
-async def run_property_testing(spec: Dict[str, str]) -> Dict[str, Any]:
-    """Main entry point for property-based testing."""
-    tester = PropertyBasedTester(spec)
-    return await tester.run_tests()
-
+async def run_make_tests(spec: Dict[str, str], sol_fname: str) -> Dict[str, Any]:
+    tester = MakeTester(spec, sol_fname)
+    try:
+        res = await tester.run_tests()
+    except RuntimeError as e:
+        print(e)
+        res=[]
+    return res
 
 async def main():
     import jsonlines
     fn=sys.argv[1]
-    outfn=sys.argv[2]
+    sol_fn=sys.argv[2]
+    outfn=sys.argv[3]
     with jsonlines.open(fn) as reader:
       with jsonlines.open(outfn, mode='w') as writer:
         for jo in reader:
-            res=await run_property_testing(jo)
+            res=await run_make_tests(jo, sol_fn)
             print (res)
             out_jo=copy.deepcopy(jo)
-            out_jo['pbt_results']=res
+            out_jo['tests']=res
             writer.write(out_jo)
 
 if __name__=='__main__':

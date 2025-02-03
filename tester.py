@@ -43,6 +43,8 @@ where
         # Generate test assertions
         test_assertions = []
         test_count = len(problem['tests'])
+        if test_count==0:
+            raise ValueError("no test cases found")
         test_assertions.append(f"let mut passed := 0")
         
         for i, test_case in enumerate(problem['tests']):
