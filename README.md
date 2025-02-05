@@ -2,6 +2,7 @@
 
 [Writeup on the initial experiment](https://gasstationmanager.github.io/ai/2025/01/22/hallucination.html)
 
+[Writeup on followup experiments](https://gasstationmanager.github.io/ai/2025/02/05/hallucination-followup.html)
 
 ## Installation
 
