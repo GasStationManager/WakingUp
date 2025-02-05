@@ -70,6 +70,7 @@ async def solve_recog (problem: Dict[str, Any], model='sonnet', max_attempts=10)
         _,output,stats=lt.test_solution(res['final_code'], problem)
         print(output)
         print(stats)
+        ret['output']+='\n'+ res['final_code']
         ret['tests_passed']=stats['passed']
         ret['tests_total']=stats['total']
 

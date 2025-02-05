@@ -58,9 +58,9 @@ async def solve_recog (problem: Dict[str, Any], model='sonnet', max_attempts=20)
     out=''
     for att in res['attempts']:
         out+='\nAttempt:\n'
-        if 'thought' in att: out+=att['thought']+'\n'
-        out+=att['code']+'\n'
-        out+=str(att['result'])
+        if 'thought' in att: out+=str(att['thought'])+'\n'
+        out+=str(att.get('code',''))+'\n'
+        out+=str(att.get('result',''))
 
     if out=='': out=res['messages'][-1]['content']
     print (out)
@@ -70,6 +70,7 @@ async def solve_recog (problem: Dict[str, Any], model='sonnet', max_attempts=20)
         _,output,stats=lt.test_solution(res['final_code'], problem)
         print(output)
         print(stats)
+        ret['output']+='\n'+ res['final_code']
         ret['tests_passed']=stats['passed']
         ret['tests_total']=stats['total']
 
