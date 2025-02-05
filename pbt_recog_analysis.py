@@ -10,7 +10,7 @@ from LeanTool.leantool import interactive_lean_check, models
 import tester
 
 
-TEMP=0.7
+
 
 def generate_recog_prompt(problem: Dict[str,Any]) -> str:
         return f"""You are given a coding problem description, and a formal specification of the requirements in Lean 4.
@@ -18,7 +18,7 @@ You are also given a candidate solution to the problem,
 and outputs from a property-based testing procedure that checks the output of the candidate solution given random inputs against the specifications.
 
 If the property-based testing indicates there are failed test cases, determine why the tests failed, and try to fix the errors in the candidate
-solution.
+solution. 
 
 Problem Description:
 ```
@@ -43,6 +43,18 @@ The candidate solution:
 Outputs from the property-based testing procedure, indicating the input-output values from the candidate solution that failed to satisfy the specification:
 {problem['pbt_results']}
 
+
+You may use the following steps to help identify the error:
+- Understand the intention behind the original code. At a high level, what is the algorithm it is trying to implement?
+- Given the test input, mentally trace execution of the code (without calling Lean) to produce an output. Does it match the actual output? 
+  If no: we have a mismatch of understanding of what the code does. You may use #print command in your code to print out the definitions of library functions involved. If yes: go on the next step.
+- Given test input, what is the expected output given the abstracted algorithm of the original solution? Does it match the actual output?
+  If no: something wrong happened during the translation from idea to code. If yes: go on the next step.
+- Plug the input and actual output to the formal specification (without calling Lean). Do they satisfy the spec?
+  If Yes: we have a mismatch of understanding of what the formal specification means, because the property-based testing result shows that the specification is violated for this input
+- Given this input, what would the output need to be in order to satisfy the formal specification?
+- If you cannot fix the current approach to produce the correct output, you may try to generate a new solution using a different approach.
+
 You are encouraged to think step by step. You do not need to prove the theorem statements.
 Use the provided tool to further test your modified Lean code on the input values that the original solution failed on. 
 Iterate until your code produces correct outputs for those inputs.
@@ -50,15 +62,15 @@ You may further test your code on other inputs as well.
 """
 
 
-async def solve_recog (problem: Dict[str, Any], model='sonnet', max_attempts=10):
+async def solve_recog (problem: Dict[str, Any], model='sonnet', max_attempts=30):
     prompt = generate_recog_prompt(problem)
-    res=await interactive_lean_check(prompt, model=models[model], max_attempts=max_attempts,temperature=TEMP)
+    res=await interactive_lean_check(prompt, model=models[model], max_attempts=max_attempts)
 
     print (res)
     out=''
-    for att in res['attempts']:
-        out+='\nAttempt:\n'
-        if 'thought' in att: out+=str(att.get('thought',''))+'\n'
+    for i,att in enumerate(res['attempts']):
+        out+=f'\nAttempt {i}:\n'
+        if 'thought' in att: out+=str(att['thought'])+'\n'
         out+=att.get('code','')+'\n'
         out+=str(att.get('result',''))
 
@@ -86,10 +98,6 @@ async def main():
         else:
           model='sonnet'
         print ('using model', model)
-        if len(sys.argv)>4:
-          max_att=sys.argv[4]
-        else:
-          max_att=3
         inp_jo=copy.deepcopy(jo)
         if 'statement' in jo:
           inp_jo['description']=jo['statement']
@@ -97,10 +105,7 @@ async def main():
           inp_jo['description']=jo['description']
         #print (json.dumps(inp_jo,indent=4))
         try:
-          for attempts in range(max_att):
-            solution=await solve_recog(inp_jo, model=model)
-            if solution.get('tests_total',0)>0 and solution['tests_passed']==solution['tests_total']:
-              break
+          solution=await solve_recog(inp_jo, model=model)
           out_jo=copy.deepcopy(inp_jo)
           out_jo['recog_solution']=solution
         except Exception as e:
