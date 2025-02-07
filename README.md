@@ -19,7 +19,9 @@
 
 
 ## Pipeline
+
 - `code_contests_sample_passed.jsonl`: 10 autoformalized problem instances, created from `code_contests` data set via the FormalizeWithTest pipeline.
+- `easy_with_tests.jsonl`: CodeProofBenchmark problems, with test cases automatically generated using the script `pbt/make_tests.py`
 - in the repo directory, do
 ```
 poetry shell
@@ -42,3 +44,6 @@ cd ..
 python pbt_recog.py <input_file> <output_file> <model_name>
 ``` 
 
+## Episodes
+
+Examples of hallucination detection and recovery are collected in the directory `episodes/`.
