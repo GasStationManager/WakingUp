@@ -9,6 +9,8 @@ import copy
 from LeanTool.leantool import interactive_lean_check, models
 import tester
 
+DEBUG=True
+
 
 def generate_implementation_prompt(problem: Dict[str,Any]) -> str:
         return f"""Please implement a solution to the following problem in Lean 4.
@@ -32,7 +34,7 @@ then put the final Lean 4 implementation code (including the signature) in the <
 
 async def solve_code_only (problem: Dict[str, Any], model='sonnet'):
     prompt = generate_implementation_prompt(problem)
-    res=await interactive_lean_check(prompt, model=models[model])
+    res=await interactive_lean_check(prompt, model=models[model], debug=DEBUG)
 
     if 'final_code' in res:
       ret=res['final_code']

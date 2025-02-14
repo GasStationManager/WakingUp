@@ -9,7 +9,7 @@ readme = "README.md"
 python = "^3.10"
 litellm = "^1.60.5"
 jsonlines = "^4.0.0"
-pantograph = { file = "LeanTool/PyPantograph/dist/pantograph-0.2.23-cp310-cp310-manylinux_2_31_x86_64.whl" }
+pantograph = { file = "LeanTool/PyPantograph/dist/pantograph-0.2.25-cp310-cp310-manylinux_2_31_x86_64.whl" }
 
 
 [build-system]

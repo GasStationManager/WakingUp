@@ -1027,12 +1027,12 @@ files = [
 
 [[package]]
 name = "pantograph"
-version = "0.2.23"
+version = "0.2.25"
 description = "A machine-to-machine interaction system for Lean"
 optional = false
-python-versions = ">=3.10,<4.0"
+python-versions = ">=3.9.0"
 files = [
-    {file = "pantograph-0.2.23-cp310-cp310-manylinux_2_31_x86_64.whl", hash = "sha256:b0b6090a34d9dc733da60eb3b3be57132910d4b9c60e5d9ae238285bdf4b6306"},
+    {file = "pantograph-0.2.25-cp310-cp310-manylinux_2_31_x86_64.whl", hash = "sha256:bb25266fa16c4a273ee4b35e7fbc86895ea21fab8dafec5984740956cbf88a2d"},
 ]
 
 [package.dependencies]
@@ -1040,7 +1040,7 @@ pexpect = ">=4.9.0,<5.0.0"
 
 [package.source]
 type = "file"
-url = "../LeanTool/PyPantograph/dist/pantograph-0.2.23-cp310-cp310-manylinux_2_31_x86_64.whl"
+url = "../LeanTool/PyPantograph/dist/pantograph-0.2.25-cp310-cp310-manylinux_2_31_x86_64.whl"
 
 [[package]]
 name = "pexpect"
@@ -1875,4 +1875,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "3876832b47d509e44572ff6525134b24ce0fe96fcde9693fd01923be6e88d0e4"
+content-hash = "1b3b3d2e597789d276f871a03d02df06230a35f47a0b33206e8c054538c8a10f"

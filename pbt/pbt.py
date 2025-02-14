@@ -16,6 +16,18 @@ class TestInput:
     type_name: str
     values: List[str]
 
+def extract_imports(code: str):
+    lines=code.splitlines(keepends=True)
+    imports=''
+    rest=''
+    for ln in lines:
+        if ln.startswith('import'):
+            imports+=ln
+        else:
+            rest+=ln
+    return imports, rest
+
+
 class PropertyBasedTester:
     def __init__(self, spec: Dict[str, str]):
         self.description = spec['description']
@@ -59,11 +71,12 @@ import Plausible
     def generate_eval_script(self, inputs: List[str]) -> str:
         """Generate Lean script to evaluate function with given inputs."""
         input_params = " ".join(f"{inp}" for inp in inputs)
-        
+        imports,rest=extract_imports(self.code_solution)
         return f"""
+{imports}
 set_option linter.unusedVariables false
 
-{self.code_solution}
+{rest}
 
 #eval {self.function_signature.split('(')[0].strip().replace('def', '')} {input_params}
         """
