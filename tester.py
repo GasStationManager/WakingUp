@@ -13,7 +13,10 @@ class LeanTester:
 
     def create_test_file(self, implementation: str, problem: Dict[str, Any]) -> str:
         """Create a temporary Lean file with the implementation and test cases."""
-        test_template = """
+        if 'units' in problem:
+            test_content = f"{implementation}\n\n{problem['units']}"
+        else:
+            test_template = """
 {implementation}
 
 def main : IO Unit := do
@@ -28,49 +31,49 @@ where
       IO.println s!"Test failed: expected {{b}} but got {{a}}"
       pure false
 """
-        # Process the implementation to remove any existing main function
-        implementation = re.sub(r'def\s+main.*?end', '', implementation, flags=re.DOTALL)
+            # Process the implementation to remove any existing main function
+            implementation = re.sub(r'def\s+main.*?end', '', implementation, flags=re.DOTALL)
         
-        # Extract function information from the signature
-        signature_match = re.search(r'def\s+(\w+)\s*\((.*?)\)\s*:\s*([^:=]+)', problem['function_signature'])
-        if not signature_match:
-            raise ValueError(f"Could not parse function signature: {problem['function_signature']}")
+            # Extract function information from the signature
+            signature_match = re.search(r'def\s+(\w+)\s*\((.*?)\)\s*:\s*([^:=]+)', problem['function_signature'])
+            if not signature_match:
+                raise ValueError(f"Could not parse function signature: {problem['function_signature']}")
         
-        fn_name = signature_match.group(1)
-        params = signature_match.group(2)
-        result_type = signature_match.group(3).strip()
+            fn_name = signature_match.group(1)
+            params = signature_match.group(2)
+            result_type = signature_match.group(3).strip()
 
-        # Generate test assertions
-        test_assertions = []
-        test_count = len(problem['tests'])
-        if test_count==0:
-            raise ValueError("no test cases found")
-        test_assertions.append(f"let mut passed := 0")
+            # Generate test assertions
+            test_assertions = []
+            test_count = len(problem['tests'])
+            if test_count==0:
+                raise ValueError("no test cases found")
+            test_assertions.append(f"let mut passed := 0")
         
-        for i, test_case in enumerate(problem['tests']):
-            # Split the test case into inputs and expected output
-            #parts = test_case.split()
-            #if len(parts) < 2:  # Need at least one input and one output
-            #    raise ValueError(f"Invalid test case format: {test_case}")
+            for i, test_case in enumerate(problem['tests']):
+                # Split the test case into inputs and expected output
+                #parts = test_case.split()
+                #if len(parts) < 2:  # Need at least one input and one output
+                #    raise ValueError(f"Invalid test case format: {test_case}")
             
-            inputs = test_case['input']  # All but the last part are inputs
-            expected = test_case['output']  # Last part is the expected output
+                inputs = test_case['input']  # All but the last part are inputs
+                expected = test_case['output']  # Last part is the expected output
             
-            # Create the function call
-            fn_call = f"{fn_name} {inputs}"
-            test_assertions.append(f"""
+                # Create the function call
+                fn_call = f"{fn_name} {inputs}"
+                test_assertions.append(f"""
   if ← checkEqual ({fn_call}) ({expected}) then
     passed := passed + 1""")
-        
-        test_assertions.append(f"\n  pure ()")
 
-        test_content = test_template.format(
-            implementation=implementation,
-            test_assertions="\n  ".join(test_assertions),
-            result_type=result_type,
-            passed_count="{passed}",
-            total_count=test_count
-        )
+            test_assertions.append(f"\n  pure ()")
+
+            test_content = test_template.format(
+              implementation=implementation,
+              test_assertions="\n  ".join(test_assertions),
+              result_type=result_type,
+              passed_count="{passed}",
+              total_count=test_count
+            )
 
         # Create temporary file
         with tempfile.NamedTemporaryFile(suffix='.lean', delete=False, mode='w') as f:

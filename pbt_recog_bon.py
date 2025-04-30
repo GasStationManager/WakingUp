@@ -32,9 +32,10 @@ The formal specification:
 ```
 {problem.get('property_def', '')}
 
-{problem['theorem_signature']}
+{problem.get('theorem_signature','')}
 
 {problem.get('theorem2_signature', '')}
+{problem.get('spec','')}
 ```
 The candidate solution:
 ```

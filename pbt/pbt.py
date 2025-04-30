@@ -37,7 +37,7 @@ class PropertyBasedTester:
         self.code_solution = spec['code_solution']
         self.theorem_signature=spec.get('theorem_signature')
         self.theorem2_signature=spec.get('theorem2_signature', '')
-        
+        self.spec=spec.get('spec')
     def extract_input_types(self) -> List[TestInput]:
         """Extract input parameter types from function signature."""
         # First split the signature into parameter groups
@@ -125,22 +125,25 @@ set_option linter.unusedVariables false
 
 
 
-    def gen_plausible_script(self, theorem_sig:str):
+    def gen_plausible_script(self, theorem_sig:str, do_simp=True):
         code=self.code_solution.replace('def', '@[simp] def')
+        if not theorem_sig.strip().endswith(':='):
+            theorem_sig+=':='
+        simp_tac='simp' if do_simp else ''
         script=f"""
 import Plausible
 
 {code}
 
-{theorem_sig} := by
-  simp
+{theorem_sig} by
+  {simp_tac}
   plausible
 """
         return script
-    def run_plausible_script(self, theorem_sig:str):
+    def run_plausible_script(self, theorem_sig:str, do_simp=True):
         success=True
         try:
-            r=self.run_lean_script(self.gen_plausible_script(theorem_sig))
+            r=self.run_lean_script(self.gen_plausible_script(theorem_sig,do_simp))
         except RuntimeError as e:
             r=str(e)
             if 'error: Failed to create' in r:
@@ -164,9 +167,33 @@ import Plausible
                 print(f'Plausible failed for {self.theorem2_signature}:',r)
         return output
 
+    def spec_plausible(self):
+        output=''
+        split = self.spec.split("\n\n")
+        theorems = []
+        defs=''
+        for item in split:
+            if item.startswith("theorem"):
+                theorems.append(item.replace("sorry", ""))
+            elif item.startswith("def") and 'sorry' not in item:
+                defs += '\n'+item
+        for th in theorems:
+            success,r=self.run_plausible_script(defs+'\n'+th, do_simp=False)
+            if success:
+              if 'Unable to find a counter-example' in r:
+                print('plausible passed:\n'+r)
+              else:
+                output+=f"Result of running plausible on the theorem statement {th}:\n"
+                output+=r
+            else:
+                print (f'Plausible failed for {th}:', r)
+        return output
+
     async def run_tests(self, num_tests: int = 100) -> Dict[str, Any]:
         """Run property-based tests."""
-        if self.property_def is None:
+        if self.spec:
+            return {'output': self.spec_plausible()}
+        elif self.property_def is None:
             return {'output': self.try_plausible()} 
         results = {
             'total_tests': num_tests,

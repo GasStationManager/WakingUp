@@ -10,7 +10,13 @@ from LeanTool.leantool import interactive_lean_check, models
 import tester
 
 
+CUTOFF=1024
 
+def trunc(s:str, cutoff=CUTOFF) -> str:
+    if len(s)>cutoff:
+        return s[:cutoff]+ '...'
+    else:
+        return s
 
 def generate_recog_prompt(problem: Dict[str,Any]) -> str:
         return f"""You are given a coding problem description, and a formal specification of the requirements in Lean 4.
@@ -32,16 +38,17 @@ The formal specification:
 ```
 {problem.get('property_def', '')}
 
-{problem['theorem_signature']}
+{problem.get('theorem_signature','')}
 
 {problem.get('theorem2_signature', '')}
+{problem.get('spec','')}
 ```
 The candidate solution:
 ```
 {problem['code_solution']}
 ```
 Outputs from the property-based testing procedure, indicating the input-output values from the candidate solution that failed to satisfy the specification:
-{problem['pbt_results']}
+{trunc(str(problem['pbt_results']))}
 
 
 You may use the following steps to help identify the error:
