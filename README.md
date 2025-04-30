@@ -4,6 +4,8 @@
 
 [Writeup on followup experiments](https://gasstationmanager.github.io/ai/2025/02/05/hallucination-followup.html)
 
+[Writeup on applying the methods to the FVAPPS data set](https://gasstationmanager.github.io/ai/2025/02/18/fvapps.html)
+
 ## Installation
 
 - install Lean 4
